@@ -1,0 +1,30 @@
+Name:           gitstar-ssh
+Version:        0.1
+build-type:     Simple
+License:        GPL-2
+License-File:   LICENSE
+Author:         HAILS team
+Maintainer:     Amit Levy <levya at cs.stanford dot edu>, Deian Stefan  <deian at cs dot stanford dot edu>
+Stability:      experimental
+Synopsis:       Gitstar ssh service
+Category:       Web
+Cabal-Version:  >= 1.6
+
+Description:
+        This module exports a ssh server that handles git requests.
+
+Executable gitstarSsh
+  Main-is: gitstarSsh.hs
+  ghc-options: -Wall -fno-warn-orphans
+  build-depends: base >= 4.5 && < 5,
+                 regex-posix >= 0.95 && < 1.0,
+                 mongoDB >= 1.1.2 && < 1.3,
+                 bson >= 0.1 && < 0.2,
+                 binary >= 0.5 && < 0.6,
+                 base64-bytestring >= 0.1 && < 0.2,
+                 bytestring >= 0.9 && < 1,
+                 iterIO >= 0.2.2 && < 0.3,
+                 process >= 1.1 && < 1.2,
+                 filepath >= 1.3 && < 1.4,
+                 ssh >= 0.2.7 && < 0.3,
+                 mtl >= 2.0 && < 2.1

@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Main where
+module Main (main) where
 
 import Prelude hiding (lookup)
 import Control.Monad.State
@@ -26,11 +26,10 @@ import qualified Data.ByteString.Char8 as S8
 import qualified Data.ByteString.Lazy as L
 import Data.Maybe
 
-import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Binary.Get (runGet)
-import Data.Bson.Binary (putDocument, getDocument)
+import Data.Bson.Binary (getDocument)
 
-import Database.MongoDB 
+import Database.MongoDB  hiding (auth)
 
 import Text.Regex.Posix
 
@@ -40,8 +39,8 @@ type S = S.ByteString
 
 main :: IO ()
 main = do
-    port    <- read `liftM` getEnv "GITSTAR_SSH_PORT" :: IO Int
-    keyPath <- getEnv "GITSTAR_SSH_KEY"
+    port    <- read `liftM` getEnv "SSH_PORT" :: IO Int
+    keyPath <- getEnv "SSH_KEY"
     hPutStrLn stderr $ "Starting ssh server on port "++ show port  ++
                        " with key " ++ keyPath ++ " ..."
     kp <- rsaKeyPairFromFile keyPath
@@ -83,7 +82,7 @@ handleReceivePack wr path = do
   case mRepoInfo of
     Nothing -> return ()
     Just (owner, repo) -> do
-      rootPath <- liftIO $ getEnv "GITSTAR_ROOT_PATH"
+      rootPath <- liftIO $ getEnv "BASE_DIR"
       let fullPath = rootPath </>  owner </> repo
       ok <- checkWriteAccess owner repo
       if ok
@@ -98,7 +97,7 @@ handleUploadPack wr opts = do
   mRepoInfo <- pathToRepoInfo wr path
   when (validOptions && isJust mRepoInfo) $ do
     let (owner, repo) = fromJust mRepoInfo
-    rootPath <- liftIO $ getEnv "GITSTAR_ROOT_PATH"
+    rootPath <- liftIO $ getEnv "BASE_DIR"
     let fullPath = rootPath </>  owner </> repo
     ok <- checkReadAccess owner repo
     if ok
@@ -189,10 +188,10 @@ checkWriteAccess owner pName = do
 
 -- | Find a project given the owner and repo (project name).
 getProject :: String -> String -> IO (Maybe Document)
-getProject owner project = do
+getProject owner proj = do
   baseUrl <- getEnv "GITSTAR_URL"
   auth <- getEnv "AUTHORIZATION"
-  let req0 = (getRequest $ baseUrl ++ "/" ++ owner ++ "/" ++ project)
+  let req0 = (getRequest $ baseUrl ++ "/" ++ owner ++ "/" ++ proj)
       authHdr = ("Authorization", S8.pack auth)
       accHdr  = ("Accept", "application/bson")
       req = req0 { reqHeaders = authHdr : (accHdr : reqHeaders req0) }
@@ -251,9 +250,10 @@ getUserKeys uName = do
                         mapM extractKeyValue keyDocs
       where extractKeyValue (Doc d) = do
               (Bin (Binary kb)) <- look "value" d
-              return $ case S8.words kb of
-                         (_:k:_) -> k
-                         [k]     -> k
+              case S8.words kb of
+                (_:k:_) -> return k
+                [k]     -> return k
+                _       -> Nothing
             extractKeyValue _       = Nothing
             
 
@@ -267,16 +267,9 @@ execute = spawnProcess . runInteractiveCommand
 strictify :: L -> S
 strictify = S.concat . L.toChunks
 
-lazyfy :: S -> L
-lazyfy = L.pack . S.unpack
-
 -- | Encode a public key into a 'Binary' blob
 encodeKey :: PublicKey -> S
 encodeKey key = B64.encode . strictify . blob $ key
-
--- | Inverse of 'encodeKey'
-decodeKey :: Binary -> PublicKey
-decodeKey (Binary bs) = blobToKey . lazyfy . B64.decodeLenient $ bs
 
 -- | Strip enclosing quotes.
 stripQuotes :: String -> String
