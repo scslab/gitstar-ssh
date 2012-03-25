@@ -1,1 +1,1 @@
-server: runghc SSHServer
+server: runghc -hide-package monads-tf SSHServer
