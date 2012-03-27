@@ -1,0 +1,9 @@
+*.hi
+*.o
+*_hsc.[ch]
+*~
+*.sw?
+Gemfile.lock
+/dist
+/tmp
+/Setup
