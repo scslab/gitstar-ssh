@@ -191,7 +191,7 @@ getProject :: String -> String -> IO (Maybe Document)
 getProject owner proj = do
   baseUrl <- getEnv "GITSTAR_URL"
   auth <- getEnv "AUTHORIZATION"
-  let req0 = (getRequest $ baseUrl ++ "/" ++ owner ++ "/" ++ proj)
+  let req0 = (getRequest $ baseUrl ++ "/" ++ owner ++ "/" ++ noGitExt proj)
       authHdr = ("Authorization", S8.pack auth)
       accHdr  = ("Accept", "application/bson")
       req = req0 { reqHeaders = authHdr : (accHdr : reqHeaders req0) }
@@ -288,13 +288,22 @@ errorWith wr msg = do
     channelDone
 
 -- | Convert a path (e.g., @/user/repo.git@) to the corresponding
--- owner (@user@) and repository (@repo.git@)
+-- owner (@user@) and repository name (@repo.git@). Note @.git@ is
+-- always added
 pathToRepoInfo :: Bool -> FilePath -> Channel (Maybe (String, FilePath))
 pathToRepoInfo wr path = 
   case splitDirectories (stripQuotes path) of
     ["/",user,repo] -> if malformed user || malformed repo
-                        then failBadPath else return $ Just (user, repo)
+                        then failBadPath else return $ Just (user, wGitExt repo)
     _ -> failBadPath
   where failBadPath = do errorWith wr "Invalid path. Expected form: /user/repo"
                          return Nothing
         malformed s = s =~ ("\\.\\." :: String)
+
+-- | Remove @.git@ from name, if any
+noGitExt :: String -> String
+noGitExt n = if takeExtension n == ".git" then dropExtension n else n
+
+-- | Add @.git@ to name, if none
+wGitExt :: String -> String
+wGitExt n = addExtension (noGitExt n) ".git"
