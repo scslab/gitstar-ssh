@@ -1,1 +1,1 @@
-server: runghc SSHServer
+server: gitstarSsh
