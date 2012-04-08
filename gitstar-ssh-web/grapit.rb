@@ -63,6 +63,9 @@ end
 
 ## Tags
 
+#TODO: Once grit supports annotated tags properly, this function
+# should be modified as follows:
+# sha should correspond to the tag hash (not the object it points to)
 get "/repos/:user/:repo/tags" do
   with_repo params[:user], params[:repo] do |repo|
     tags = repo.tags.map do |tag|
@@ -79,18 +82,26 @@ end
 
 ## Getting a tag
 
+#TODO: Once grit supports annotated tags properly, this function
+# should be modified as follows:
+# sha should correspond to the tag hash (not the object it points to)
+# object.type should also have the right type: annotated tag can point
+# to a blob or tree in addition vs. just commit)
 get "/repos/:user/:repo/git/tags/:sha" do
   tags = with_repo params[:user], params[:repo] do |repo|
     tag = repo.tags.find(params[:sha]).first
     { tag: tag.name,
-      sha: tag.commit.id,
+#      sha: params[:sha],
       message: tag.message,
       tagger: {
           name: tag.tagger.name,
           email: tag.tagger.email,
           date: tag.tag_date
       },
-#TODO: object { type, sha }
+      object: {
+#        type: "commit",
+        sha: tag.commit.id
+      }
     }
   end
   toSON tags
