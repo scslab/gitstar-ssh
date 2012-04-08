@@ -89,7 +89,7 @@ get "/repos/:user/:repo/git/tags/:sha" do
           name: tag.tagger.name,
           email: tag.tagger.email,
           date: tag.tag_date
-      }
+      },
 #TODO: object { type, sha }
     }
   end
@@ -146,7 +146,7 @@ get "/repos/:user/:repo/git/refs" do
         ref: "refs/#{type}s/#{ref.name}",
         object: {
           sha: ref.commit,
-          type: type
+          type: (type == "tag") ? "tag" : "commit"
         }
       }
     end
@@ -166,7 +166,7 @@ def get_reference(repo, ref_name)
     ref: "refs/#{type}s/#{ref.name}",
     object: {
       sha: ref.commit,
-      type: type
+      type: (type == "tag") ? "tag" : "commit"
     }
   }]
 end
@@ -181,7 +181,7 @@ def get_sub_namespace_references(repo, ref_name)
       ref: "refs/#{type}s/#{ref.name}",
       object: {
         sha: ref.commit,
-        type: type
+        type: (type == "tag") ? "tag" : "commit"
       }
     }
   end
@@ -225,7 +225,7 @@ get "/repos/:user/:repo/git/trees/:sha" do
   tree = with_repo params[:user], params[:repo] do |repo|
     tree = repo.tree(params[:sha])
     sub_trees = tree.trees.map {|t| makeTree(t)}
-    blobs = tree.blobs.map {|t| makeTree(t)}
+    blobs = tree.blobs.map {|t| makeBlob(t)}
     {
       sha: tree.id,
       tree: sub_trees + blobs
