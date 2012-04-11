@@ -1,6 +1,7 @@
 require 'sinatra'
 require 'json'
 require 'bson'
+require 'base64'
 require 'grit'
 
 BASE_DIR = ENV["BASE_DIR"]
@@ -113,7 +114,7 @@ get "/repos/:user/:repo/git/blobs/:sha" do
   blobs = with_repo params[:user], params[:repo] do |repo|
     blob = repo.blob(params[:sha])
     { 
-      content: blob.data,
+      content: Base64.encode64(blob.data),
       mime_type: blob.mime_type
     }
   end
