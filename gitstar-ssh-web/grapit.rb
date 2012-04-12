@@ -155,11 +155,9 @@ get "/repos/:user/:repo/git/commits/:sha/diff" do
   diff = with_repo params[:user], params[:repo] do |repo|
     repo.commit(params[:sha]).diffs.map do |diff|
       {
-        a_path:           diff.a_path,
-        b_path:           diff.b_path,
+        path:             diff.b_path,
         new_file:         diff.new_file,
         deleted_file:     diff.deleted_file,
-        renamed_file:     diff.renamed_file,
         similarity_index: diff.similarity_index,
         diff:             diff.diff
       }
