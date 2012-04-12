@@ -159,7 +159,7 @@ get "/repos/:user/:repo/git/commits/:sha/diff" do
         new_file:         diff.new_file,
         deleted_file:     diff.deleted_file,
         similarity_index: diff.similarity_index,
-        diff:             diff.diff
+        diff:             Base64.encode64(diff.diff)
       }
     end
   end
@@ -196,10 +196,10 @@ get "/repos/:user/:repo/git/blame/:sha/*" do
   commit = with_repo params[:user], params[:repo] do |repo|
     repo.blame(file,params[:sha]).lines.map do |line|
     {
-      lineno:    line.lineno,
-      oldlineno: line.oldlineno,
-      line:      Base64.encode64(line.line),
-      commit:    line.commit
+      lineno:     line.lineno,
+      old_lineno: line.oldlineno,
+      line:       Base64.encode64(line.line),
+      commit:     line.commit
     }
     end
   end
