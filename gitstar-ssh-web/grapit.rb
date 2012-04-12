@@ -121,6 +121,7 @@ get "/repos/:user/:repo/git/blobs/:sha" do
   toSON blobs
 end
 
+
 ## Commits
 
 get "/repos/:user/:repo/git/commits/:sha" do
@@ -144,6 +145,65 @@ get "/repos/:user/:repo/git/commits/:sha" do
       },
       parents: commit.parents.map { |p| { sha: p.id } }
     }
+  end
+  toSON commit
+end
+
+#### Commit diff
+
+get "/repos/:user/:repo/git/commits/:sha/diff" do
+  diff = with_repo params[:user], params[:repo] do |repo|
+    repo.commit(params[:sha]).diffs.map do |diff|
+      {
+        a_path:           diff.a_path,
+        b_path:           diff.b_path,
+        new_file:         diff.new_file,
+        deleted_file:     diff.deleted_file,
+        renamed_file:     diff.renamed_file,
+        similarity_index: diff.similarity_index,
+        diff:             diff.diff
+      }
+    end
+  end
+  toSON diff
+end
+
+#### Commit stats
+
+get "/repos/:user/:repo/git/commits/:sha/stats" do
+  stats = with_repo params[:user], params[:repo] do |repo|
+    stat = repo.commit(params[:sha]).stats
+      {
+        sha:          stat.id,
+        files: stat.files.map do |file|
+          { 
+            file:         file[0],
+            additions:    file[1],
+            deletions:    file[2],
+            total:        file[3]
+          }
+        end,
+        additions:    stat.additions,
+        deletions:    stat.deletions,
+        total:        stat.total
+      }
+  end
+  toSON stats
+end
+
+## Blame
+
+get "/repos/:user/:repo/git/blame/:sha/*" do
+  file = params[:splat].first
+  commit = with_repo params[:user], params[:repo] do |repo|
+    repo.blame(file,params[:sha]).lines.map do |line|
+    {
+      lineno:    line.lineno,
+      oldlineno: line.oldlineno,
+      line:      Base64.encode64(line.line),
+      commit:    line.commit
+    }
+    end
   end
   toSON commit
 end
