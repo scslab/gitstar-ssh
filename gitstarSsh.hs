@@ -145,14 +145,6 @@ handleUploadPack wr opts = do
 -- Handle authentication and access control
 --
 
--- | Readwithout failure
-maybeRead :: Read a => String -> Maybe a
-maybeRead = fmap fst . listToMaybe . reads
-
--- | Readers is a serialized either
-data Public = Public
-  deriving (Show, Read)
-
 -- | Very current user has read access to @/owner/pName@.
 checkReadAccess :: String -> String -> Channel Bool
 checkReadAccess owner pName = do
@@ -160,19 +152,15 @@ checkReadAccess owner pName = do
   mp <- liftIO $ getProject owner pName
   return $ fromMaybe False $ isReader usr mp
     where isReader usr mp = do
-            p  <- mp
-            o  <- lookup "owner" p
-            (UserDef (UserDefined ers)) <- look "readers" p
-            (pub, rs) <- getReaders (S8.unpack ers)
+            p   <- mp
+            o   <- lookup "owner" p
+            rs  <- lookup "readers" p
+            isPub <- return $ case lookup "public" p of
+                       Just v | v == False -> False
+                              | otherwise  -> True
+                       Nothing -> False
             cs <- lookup "collaborators" p
-            if pub 
-              then return True
-              else return $ usr `elem` o:(rs ++ cs)
-          getReaders :: String -> Maybe (Bool, [String])
-          getReaders str = case maybeRead str of
-                             Just (Left Public) -> Just (True,[])
-                             Just (Right rs)    -> Just (False,rs)
-                             _                  -> Nothing
+            return $ isPub || usr `elem` o:(rs ++ cs)
 
 -- | Very current user has write access to @/owner/pName@.
 checkWriteAccess :: String -> String -> Channel Bool
