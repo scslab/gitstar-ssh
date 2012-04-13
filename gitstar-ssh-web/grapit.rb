@@ -1,6 +1,7 @@
 require 'sinatra'
 require 'json'
 require 'bson'
+require 'base64'
 require 'grit'
 
 BASE_DIR = ENV["BASE_DIR"]
@@ -63,6 +64,9 @@ end
 
 ## Tags
 
+#TODO: Once grit supports annotated tags properly, this function
+# should be modified as follows:
+# sha should correspond to the tag hash (not the object it points to)
 get "/repos/:user/:repo/tags" do
   with_repo params[:user], params[:repo] do |repo|
     tags = repo.tags.map do |tag|
@@ -79,18 +83,26 @@ end
 
 ## Getting a tag
 
+#TODO: Once grit supports annotated tags properly, this function
+# should be modified as follows:
+# sha should correspond to the tag hash (not the object it points to)
+# object.type should also have the right type: annotated tag can point
+# to a blob or tree in addition vs. just commit)
 get "/repos/:user/:repo/git/tags/:sha" do
   tags = with_repo params[:user], params[:repo] do |repo|
     tag = repo.tags.find(params[:sha]).first
     { tag: tag.name,
-      sha: tag.commit.id,
+#      sha: params[:sha],
       message: tag.message,
       tagger: {
           name: tag.tagger.name,
           email: tag.tagger.email,
           date: tag.tag_date
+      },
+      object: {
+#        type: "commit",
+        sha: tag.commit.id
       }
-#TODO: object { type, sha }
     }
   end
   toSON tags
@@ -102,12 +114,13 @@ get "/repos/:user/:repo/git/blobs/:sha" do
   blobs = with_repo params[:user], params[:repo] do |repo|
     blob = repo.blob(params[:sha])
     { 
-      content: blob.data,
+      content: Base64.encode64(blob.data),
       mime_type: blob.mime_type
     }
   end
   toSON blobs
 end
+
 
 ## Commits
 
@@ -136,6 +149,63 @@ get "/repos/:user/:repo/git/commits/:sha" do
   toSON commit
 end
 
+#### Commit diff
+
+get "/repos/:user/:repo/git/commits/:sha/diff" do
+  diff = with_repo params[:user], params[:repo] do |repo|
+    repo.commit(params[:sha]).diffs.map do |diff|
+      {
+        path:             diff.b_path,
+        new_file:         diff.new_file,
+        deleted_file:     diff.deleted_file,
+        similarity_index: diff.similarity_index,
+        diff:             Base64.encode64(diff.diff)
+      }
+    end
+  end
+  toSON diff
+end
+
+#### Commit stats
+
+get "/repos/:user/:repo/git/commits/:sha/stats" do
+  stats = with_repo params[:user], params[:repo] do |repo|
+    stat = repo.commit(params[:sha]).stats
+      {
+        sha:          stat.id,
+        files: stat.files.map do |file|
+          { 
+            file:         file[0],
+            additions:    file[1],
+            deletions:    file[2],
+            total:        file[3]
+          }
+        end,
+        additions:    stat.additions,
+        deletions:    stat.deletions,
+        total:        stat.total
+      }
+  end
+  toSON stats
+end
+
+## Blame
+
+get "/repos/:user/:repo/git/blame/:sha/*" do
+  file = params[:splat].first
+  commit = with_repo params[:user], params[:repo] do |repo|
+    repo.blame(file,params[:sha]).lines.map do |line|
+    {
+      lineno:     line.lineno,
+      old_lineno: line.oldlineno,
+      line:       Base64.encode64(line.line),
+      commit:     line.commit
+    }
+    end
+  end
+  toSON commit
+end
+
 ## References
 
 get "/repos/:user/:repo/git/refs" do
@@ -146,7 +216,7 @@ get "/repos/:user/:repo/git/refs" do
         ref: "refs/#{type}s/#{ref.name}",
         object: {
           sha: ref.commit,
-          type: type
+          type: (type == "tag") ? "tag" : "commit"
         }
       }
     end
@@ -166,7 +236,7 @@ def get_reference(repo, ref_name)
     ref: "refs/#{type}s/#{ref.name}",
     object: {
       sha: ref.commit,
-      type: type
+      type: (type == "tag") ? "tag" : "commit"
     }
   }]
 end
@@ -181,7 +251,7 @@ def get_sub_namespace_references(repo, ref_name)
       ref: "refs/#{type}s/#{ref.name}",
       object: {
         sha: ref.commit,
-        type: type
+        type: (type == "tag") ? "tag" : "commit"
       }
     }
   end
@@ -225,7 +295,7 @@ get "/repos/:user/:repo/git/trees/:sha" do
   tree = with_repo params[:user], params[:repo] do |repo|
     tree = repo.tree(params[:sha])
     sub_trees = tree.trees.map {|t| makeTree(t)}
-    blobs = tree.blobs.map {|t| makeTree(t)}
+    blobs = tree.blobs.map {|t| makeBlob(t)}
     {
       sha: tree.id,
       tree: sub_trees + blobs
