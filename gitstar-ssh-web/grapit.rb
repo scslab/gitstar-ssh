@@ -42,7 +42,14 @@ end
 
 post "/repos/:user/:repo" do
   repo = appendGit params[:repo]
-  Grit::Repo.init_bare(File.join([BASE_DIR,params[:user],repo]))
+  if(params[:fork_to] != nil)
+    then
+      with_repo params[:user], params[:repo] do |repo|
+        repo.fork_bare(appendGit(File.join([BASE_DIR,params[:fork_to]])))
+      end
+    else
+     Grit::Repo.init_bare(File.join([BASE_DIR,params[:user],repo]))
+  end
 end
 
 ## Branches

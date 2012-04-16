@@ -1,2 +1,2 @@
-ssh: runghc gitstarSsh.hs
+ssh: gitstarSsh
 web: bundle exec rackup
