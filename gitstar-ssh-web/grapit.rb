@@ -52,10 +52,6 @@ post "/repos/:user/:repo" do
   end
 end
 
-after do
-  puts body
-end
-
 ## Branches
 
 get "/repos/:user/:repo/branches" do
