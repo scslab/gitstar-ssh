@@ -178,11 +178,14 @@ checkWriteAccess owner pName = do
 getProject :: String -> String -> IO (Maybe Document)
 getProject owner proj = do
   baseUrl <- getEnv "GITSTAR_URL"
-  auth <- getEnv "AUTHORIZATION"
+  authUser <- getEnv "GITSTAR_USER"
+  authHmac <- getEnv "GITSTAR_USER_HMAC"
   let req0 = (getRequest $ baseUrl ++ "/" ++ owner ++ "/" ++ noGitExt proj)
-      authHdr = ("Authorization", S8.pack auth)
+      hailsUserCookie = ("_hails_user", S8.pack authUser)
+      hailsUserHmacCookie = ("_hails_user_hmac", S8.pack authHmac)
       accHdr  = ("Accept", "application/bson")
-      req = req0 { reqHeaders = authHdr : (accHdr : reqHeaders req0) }
+      req = req0 { reqHeaders = accHdr : reqHeaders req0
+                 , reqCookies = [hailsUserCookie, hailsUserHmacCookie]}
   resp <- genSimpleHttp req L.empty Nothing 0 False
   if respStatus resp /= stat200
     then return Nothing
@@ -225,11 +228,14 @@ verifyUserKey uName key = do
 getUserKeys :: String -> IO (Maybe [S])
 getUserKeys uName = do
   baseUrl <- getEnv "GITSTAR_URL"
-  auth <- getEnv "AUTHORIZATION"
+  authUser <- getEnv "GITSTAR_USER"
+  authHmac <- getEnv "GITSTAR_USER_HMAC"
   let req0 = (getRequest $ baseUrl ++ "/" ++ uName ++ "/keys")
-      authHdr = ("Authorization", S8.pack auth)
+      hailsUserCookie = ("_hails_user", S8.pack authUser)
+      hailsUserHmacCookie = ("_hails_user_hmac", S8.pack authHmac)
       accHdr  = ("Accept", "application/bson")
-      req = req0 { reqHeaders = authHdr : (accHdr : reqHeaders req0) }
+      req = req0 { reqHeaders = accHdr : reqHeaders req0
+                 , reqCookies = [hailsUserCookie, hailsUserHmacCookie]}
   resp <- genSimpleHttp req L.empty Nothing 0 False
   if respStatus resp /= stat200
     then return Nothing
