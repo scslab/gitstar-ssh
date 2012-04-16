@@ -287,12 +287,14 @@ errorWith wr msg = do
 pathToRepoInfo :: Bool -> FilePath -> Channel (Maybe (String, FilePath))
 pathToRepoInfo wr path = 
   case splitDirectories (stripQuotes path) of
-    ["/",user,repo] -> if malformed user || malformed repo
+    ["/",user,repo] -> if (not $ wellformed user) && (not $ wellformed repo)
                         then failBadPath else return $ Just (user, wGitExt repo)
+    [user,repo] -> if (not $ wellformed user) && (not $ wellformed repo)
+                      then failBadPath else return $ Just (user, wGitExt repo)
     _ -> failBadPath
-  where failBadPath = do errorWith wr "Invalid path. Expected form: /user/repo"
+  where failBadPath = do errorWith wr "Invalid path. Expected form: user/repo"
                          return Nothing
-        malformed s = s =~ ("\\.\\." :: String)
+        wellformed s = s =~ ("^[^\\.]+" :: String)
 
 -- | Remove @.git@ from name, if any
 noGitExt :: String -> String
