@@ -1,5 +1,7 @@
 source 'http://rubygems.org'
 
+gem 'thin'
+gem 'bson_ext'
 gem 'sinatra'
 gem 'grit'
 gem 'json'

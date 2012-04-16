@@ -3,7 +3,6 @@
 *_hsc.[ch]
 *~
 *.sw?
-Gemfile.lock
 /dist
 /tmp
 /Setup
