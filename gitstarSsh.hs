@@ -160,14 +160,19 @@ checkReadAccess owner pName = do
                               | otherwise  -> True
                        Nothing -> False
             cs <- lookup "collaborators" p
-            return $ isPub || usr `elem` o:(rs ++ cs)
+            let readerOrCollab = usr `elem` o:(rs ++ cs)
+            return $ isPub || if usr == anonymous
+                                then False
+                                else readerOrCollab
 
 -- | Very current user has write access to @/owner/pName@.
 checkWriteAccess :: String -> String -> Channel Bool
 checkWriteAccess owner pName = do
   usr <- gets csUser
-  mp <- liftIO $ getProject owner pName
-  return $ fromMaybe False $ isWriter usr mp
+  if usr == anonymous
+    then return False -- Anonymous cannot write
+    else do mp <- liftIO $ getProject owner pName
+            return $ fromMaybe False $ isWriter usr mp
     where isWriter usr mp = do
             p  <- mp
             o  <- lookup "owner" p
@@ -206,14 +211,20 @@ bsonDocFromBody resp = do
 sshAuthorize :: Authorize -> Session Bool
 sshAuthorize (PublicKey uName key) = liftIO $ do
   hPutStr stderr $ "Authenticating " ++ uName ++ "..."
-  verifyOk <- verifyUserKey uName key
-  if verifyOk 
-    then hPutStrLn stderr "OK!"
-    else hPutStrLn stderr "FAILED!"
-  return verifyOk
+  if uName == anonymous
+    then hPutStrLn stderr "" >> return True
+    else do verifyOk <- verifyUserKey uName key
+            if verifyOk 
+              then hPutStrLn stderr "OK!"
+              else hPutStrLn stderr "FAILED!"
+            return verifyOk
 sshAuthorize _ = do
   liftIO $ hPutStrLn stderr "Expected public-key authentication."
   return False
+
+-- | Anonymous user can read public repos
+anonymous :: String
+anonymous = "anonymous"
 
 -- | Find a user based and verify their public key.
 verifyUserKey :: String -> PublicKey -> IO Bool
