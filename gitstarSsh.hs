@@ -200,10 +200,9 @@ getProject owner proj = do
 bsonDocFromBody :: HttpResp IO -> IO Document
 bsonDocFromBody resp = do
   ref <- newIORef []
-  (respBody resp |. maybeChunk) |$ (docI ref)
+  (respBody resp |. inumNop) |$ (docI ref)
   readIORef ref
-    where maybeChunk = if respChunk resp then inumToChunks else inumNop
-          docI ref = do x <- pureI
+    where docI ref = do x <- pureI
                         liftIO $ writeIORef ref (decodeDoc x)
           decodeDoc = runGet getDocument
 
@@ -230,10 +229,11 @@ anonymous = "anonymous"
 verifyUserKey :: String -> PublicKey -> IO Bool
 verifyUserKey uName key = do
   mkeys <- getUserKeys uName
-  return $ case mkeys of 
-    Nothing -> False
-    Just keys -> let kVal = encodeKey key
-                 in kVal `elem` keys
+  let res = case mkeys of
+              Nothing -> False
+              Just keys -> let kVal = encodeKey key
+                           in kVal `elem` keys
+  return res
 
 -- | Get all the user keys.
 getUserKeys :: String -> IO (Maybe [S])
